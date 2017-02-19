@@ -1,64 +1,240 @@
 import React, { Component } from 'react';
 import './App.css';
 
+// TODO: handle not results gracefully (msg) + next should be disabled
+// https://api.twitch.tv/kraken/search/channels?query=*
+// https://api.twitch.tv/kraken/streams/:16764225
+// fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
+const DEFAULT_QUERY = '*';
+
+const PATH_BASE = 'https://api.twitch.tv/kraken';
+const PATH_SEARCH = '/search';
+const OBJECT_CHANNELS = 'channels';
+const OBJECT_STREAMS = 'streams';
+
+const PARAM_SEARCH = 'query=';
+const PARAM_PAGE = 'page=';
+const CLIENT_IT = "bm7ifyx69m7j6yo8t39b43gb70etra";
+const PARAM_HPP = 'hitsPerPage=';
 
 class App extends Component {
   constructor(props){
     super(props);
     this.state ={
       results: null,
+      searchTerm: DEFAULT_QUERY,
+      isLoading: true,
     };
-    this.fetchSearchStreams = this.fetchSearchStreams.bind(this);
+
     this.setSearchResults = this.setSearchResults.bind(this);
+    this.searchChannelsandSrteams = this.searchChannelsandSrteams.bind(this)
+    this.onSearchSubmit = this.onSearchSubmit.bind(this)
+    this.onSearchChange = this.onSearchChange.bind(this)
+    this.onClickMore = this.onClickMore.bind(this)
   }
 
-  fetchSearchStreams(){
-    console.log('fetchSearchStreams');
-    fetch("https://api.twitch.tv/kraken/search/channels?query=*",{
-      headers: {
-          "Client-ID": "bm7ifyx69m7j6yo8t39b43gb70etra"
-        },
+  // general method to access the api
+  fetchResources(object,isSearch,QueryParam,completeURL){
+    this.setState({isLoading: true});
+    return new Promise ((fulfill, reject)=>{
+      let URL = null;
+      if(completeURL){
+        URL = completeURL;
+      }
+      else if (isSearch) {
+        URL =`${PATH_BASE}${PATH_SEARCH}/${object}?${PARAM_SEARCH}${QueryParam}`;
+      } else {
+        URL = `${PATH_BASE}/${object}/${QueryParam}`;
+      }
+      console.log('fetchResources URL', URL);
+
+      var data = fetch(URL,{
+        headers: {
+            "Client-ID": "bm7ifyx69m7j6yo8t39b43gb70etra"
+          },
+      })
+        .then(response => response.json())
+        .then(results => {
+          fulfill(results);
+        }
+      )
+        .catch(function(ex) {
+          console.log('parsing failed', ex);
+          reject(ex);
+        });
+
+    });
+  }
+// searches for channels and then the streams that belong to that channel one by one
+// return an array of channels. the streams are embeded within the channels
+// the method ends up by setting the state which will in turn render
+  searchChannelsandSrteams(QueryParam, completeURL){
+    let args = [];
+    if (QueryParam) {
+      args = [OBJECT_CHANNELS,true,QueryParam,];
+    } else {
+      args = [,,,completeURL];
+    }
+    // TODO: beautify this method or split into several ones
+    let temp_results = [];
+    console.log("searchChannelsandSrteams start");
+    return new Promise((fulfill,reject)=>{
+      // start by getting channels
+      this.fetchResources.apply(this,args)
+        .then((results)=>{
+          if (results) { // to make sure we could iterate over channels
+            temp_results = results;
+            temp_results.streamArrayPromises = [];
+            temp_results.channels.map(channel=>{
+              temp_results.streamArrayPromises.push(new Promise((fulfill, reject) => {
+              this.fetchResources(OBJECT_STREAMS,false,channel.display_name.replace(/\s/g,''))
+                .then(temp_results=>fulfill(temp_results))
+                .catch(err=>console.log('Err in fetch straem',channel._id,err))
+              }))
+            })
+            Promise.all(temp_results.streamArrayPromises)
+            .then((streamPromisesResult) => {
+              temp_results['streamPromisesResult'] = streamPromisesResult;
+              temp_results.streamPromisesResult.map((item,index)=>{
+                // place stream next inside its channel
+                temp_results.channels[index]['streams'] = item;
+              })
+              fulfill(temp_results);
+            })
+    } else{ fulfill(temp_results);} // case no results came back from search for channels
     })
-      .then(response => response.json())
-      .then(results => this.setSearchResults(results))
-      .catch(function(ex) {
-        console.log('parsing failed', ex)
-        })
-  }
+    .catch((err) => {'Err in searchChannelsandSrteams',err})
+  })
+}
+  // set the results as component state
+  setSearchResults(new_results){
+    const {results} = this.state;
 
-  setSearchResults(results){
+    let channels = [];
+    if (new_results) {
+      if (new_results.channels) {
+        channels = new_results.channels;
+      }
+    }
+    let oldChannels = [];
+    if (results) {
+      if (results.channels) {
+        oldChannels = results.channels;
+      }
+    }
+
+    const updatedChannels = [
+      ...oldChannels,
+      ...channels
+    ];
+
+    console.log('old channels: ', oldChannels);
+    console.log('channels: ', channels);
+    console.log('updated channels: ', updatedChannels);
+
+    const _links = new_results._links;
+
+
+
     this.setState({
-      results,
+      results: {
+        ['channels']: updatedChannels,
+        ['_links']: _links,
+      },
+      isLoading: false
     });
     console.log('setting search results', results);
   }
 
+  onSearchChange(event){
+    console.log('event.target.value',event.target.value);
+    this.setState({
+      searchTerm: event.target.value
+    })
+    console.log('this.state.searchTerm',this.state.searchTerm);
+    event.preventDefault();
+  }
+
+  onSearchSubmit(event){
+    console.log('event when clicking search',event);
+    this.setState({
+      results: null
+    })
+    this.searchChannelsandSrteams(this.state.searchTerm)
+    // TODO: generelize it
+    .then((results) => {
+      console.log('finished');
+      this.setSearchResults(results);
+    })
+    .catch((err) => {console.log('err',err)})
+    event.preventDefault();
+  }
+
+  onClickMore(){
+    console.log('Will issue new request for: ' + this.state.results._links['next'] );
+    this.searchChannelsandSrteams(null,this.state.results._links['next'])
+    // TODO: generelize it
+    .then((results) => {
+      console.log('finished');
+      this.setSearchResults(results);
+    })
+    .catch((err) => {console.log('err',err)})
+  }
+
+
+
+ // standard react components
   componentDidMount(){
     console.log('componentDidMount');
-    this.fetchSearchStreams();
+    this.searchChannelsandSrteams(DEFAULT_QUERY)
+      .then((results) => {
+        console.log('finished');
+        this.setSearchResults(results);
+      })
+      .catch((err) => {console.log('err',err)})
   }
+
   render() {
     const {
       results,
+      isLoading,
     } = this.state;
     console.log('app.render.results', results);
 
     return (
       <div className="App">
         <h2>Twitch Viewer</h2>
-        <Search />
+        <Search
+          onSubmit={this.onSearchSubmit}
+          onChange={this.onSearchChange}
+          />
         <Table
           results={results} />
+          <div>
+            <ButtonWithLoading
+              isLoading={isLoading}
+              onClick ={this.onClickMore}
+              >
+              More?
+            </ButtonWithLoading>
+          </div>
       </div>
     );
   }
 }
 
 // Search Component
-const Search = () => (
-  <form>
+const Search = ({
+  onSubmit,
+  onChange,
+}) => (
+  <form
+    onSubmit={onSubmit}
+    >
     <input
-      type="text"/>
+      type="text"
+      onChange={onChange}
+      />
     <button
       type="submit">
       search button
@@ -67,7 +243,25 @@ const Search = () => (
 );
 
 // Table Component
+
+
 class Table extends Component{
+  renderStream(channel){
+    if (channel.streams.stream === null) {
+      console.log(channel.streams.stream);
+      return(
+        <div>Offline</div>
+      );
+    } else {
+      console.log(channel.streams.stream);
+      return(
+        <div>
+          <a href={channel.url}>Online</a>
+        </div>
+      );
+    }
+
+  }
   render(){
     const {
       results
@@ -89,9 +283,9 @@ class Table extends Component{
             <span>{channel._id}</span>
             <span>{channel.display_name}</span>
             <span>
-              <img src={channel.logo} alt="logo" height="42" width="42" />
+              <img src={channel.logo} />
             </span>
-
+            <span>{this.renderStream(channel)}</span>
           </div>
           )
         )
@@ -105,5 +299,34 @@ class Table extends Component{
     )
   }
 }
+
+class Button extends Component{
+  render(){
+    const {
+      onClick,
+      children
+    } = this.props;
+
+    return (
+      <button
+        onClick={onClick}
+        type='button'
+        >
+        {children}
+      </button>
+    )
+  }
+}
+
+// Loading Component
+const Loading = () =>
+  <div>LOADING....</div>
+
+// withLoading Component
+const withLoading = (Component)=>({isLoading, ...rest})=>
+  isLoading? <Loading /> : <Component {...rest} />
+
+const ButtonWithLoading = withLoading(Button);
+
 
 export default App;
