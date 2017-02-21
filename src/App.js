@@ -2,6 +2,8 @@ import React, { Component } from 'react';
 import './App.css';
 
 // TODO: handle not results gracefully (msg) + next should be disabled
+
+// TODO: handle search with no arguments
 // https://api.twitch.tv/kraken/search/channels?query=*
 // https://api.twitch.tv/kraken/streams/:16764225
 // fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
@@ -203,15 +205,20 @@ class App extends Component {
 
     return (
       <div className="App">
-        <h2>Twitch Viewer</h2>
-        <Search
-          onSubmit={this.onSearchSubmit}
-          onChange={this.onSearchChange}
-          />
+        <div className="header">
+            <div className="header-title">Twitch Viewer</div>
+              <Search className="header-search"
+                onSubmit={this.onSearchSubmit}
+                onChange={this.onSearchChange}
+                />
+        </div>
+
+
         <Table
           results={results} />
           <div>
             <ButtonWithLoading
+              className='searchButton'
               isLoading={isLoading}
               onClick ={this.onClickMore}
               >
@@ -227,17 +234,21 @@ class App extends Component {
 const Search = ({
   onSubmit,
   onChange,
+  className ='',
 }) => (
-  <form
+  <form className={className}
     onSubmit={onSubmit}
     >
     <input
+      className='searchText'
       type="text"
+      placeholder="search text"
       onChange={onChange}
       />
     <button
+      className='searchButton'
       type="submit">
-      search button
+      search
     </button>
   </form>
 );
@@ -269,23 +280,26 @@ class Table extends Component{
     console.log('table.results:', results);
     return(
       <div>
-        <div className='Table-Header'>
-          <span>IMG</span>
-          <span>CHANNEL DISPLAY NAME</span>
-          <span>ONLINE</span>
-          <span>ONLINE</span>
-          <span>LINK</span>
+        <div className='table-header'>
+          <span style={{ width:'40%'}}>IMG</span>
+          <span style={{ width:'30%'}}>NAME</span>
+          <span style={{ width:'30%'}}>ONLINE</span>
         </div>
 
         { results ? (
           results.channels.map(channel=>
-          <div key={channel._id} className='Table-row'>
-            <span>{channel._id}</span>
-            <span>{channel.display_name}</span>
-            <span>
-              <img src={channel.logo} />
+          <div key={channel._id} className='table-row'>
+            <span style={{ width:'40%'}}>
+              <img
+                src={channel.logo}
+                className='table-row-img'/>
             </span>
-            <span>{this.renderStream(channel)}</span>
+            <span
+              className='table-row-txt'
+              style={{ width:'30%'}}>{channel.display_name}</span>
+            <span
+              className='table-row-txt'
+              style={{ width:'30%'}}>{this.renderStream(channel)}</span>
           </div>
           )
         )
@@ -304,13 +318,15 @@ class Button extends Component{
   render(){
     const {
       onClick,
-      children
+      children,
+      className='',
     } = this.props;
 
     return (
       <button
         onClick={onClick}
         type='button'
+        className={className}
         >
         {children}
       </button>
