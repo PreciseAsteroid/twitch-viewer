@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import './App.css';
 
+// TODO: check why so many rendering takes place
+
 // TODO: handle not results gracefully (msg) + next should be disabled
 
 // TODO: handle search with no arguments
@@ -215,10 +217,11 @@ class App extends Component {
 
 
         <Table
-          results={results} />
+          results={results}
+          isLoading ={isLoading} />
           <div>
             <ButtonWithLoading
-              className='searchButton'
+              className='moreButton'
               isLoading={isLoading}
               onClick ={this.onClickMore}
               >
@@ -273,9 +276,41 @@ class Table extends Component{
     }
 
   }
+
+  renderResults(results, isLoading){
+    if (isLoading) {
+      console.log('still loading');
+    } else if (results) {
+      return (
+        results.channels.map(channel=>
+        <div key={channel._id} className='table-row'>
+          <span style={{ width:'40%'}}>
+            <img
+              src={channel.logo}
+              className='table-row-img'/>
+          </span>
+          <span
+            className='table-row-txt'
+            style={{ width:'30%'}}>{channel.display_name}</span>
+          <span
+            className='table-row-txt'
+            style={{ width:'30%'}}>{this.renderStream(channel)}</span>
+        </div>
+      )
+    )
+
+    } else{
+      // not reulsts
+      return(
+        <span>No results</span>
+      )
+    }
+  }
+
   render(){
     const {
-      results
+      results,
+      isLoading,
     } = this.props;
     console.log('table.results:', results);
     return(
@@ -286,29 +321,7 @@ class Table extends Component{
           <span style={{ width:'30%'}}>ONLINE</span>
         </div>
 
-        { results ? (
-          results.channels.map(channel=>
-          <div key={channel._id} className='table-row'>
-            <span style={{ width:'40%'}}>
-              <img
-                src={channel.logo}
-                className='table-row-img'/>
-            </span>
-            <span
-              className='table-row-txt'
-              style={{ width:'30%'}}>{channel.display_name}</span>
-            <span
-              className='table-row-txt'
-              style={{ width:'30%'}}>{this.renderStream(channel)}</span>
-          </div>
-          )
-        )
-
-          : <span>No results</span>
-
-        }
-
-
+        <span>{this.renderResults(results, isLoading)}</span>
       </div>
     )
   }
