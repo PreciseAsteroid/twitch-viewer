@@ -67,6 +67,15 @@
   border-radius: 5px;
 }
 
+.radio{
+  margin-top: 20px;
+}
+
+.radio-item {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
 .table-header {
   display: flex;
   margin: auto;
@@ -74,6 +83,12 @@
   font-weight: bolder;
   margin-top: 15px;
   width: 90%;
+}
+
+input[type="radio"] {
+  margin-right: 8px;
+  margin-top: -3px;
+  vertical-align: middle;
 }
 
 .table-row {

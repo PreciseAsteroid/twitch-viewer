@@ -273,7 +273,7 @@ const Search = ({
       search
     </button>
     <div className='radio'>
-      <label>
+      <label className="radio-item">
         <input
           type='radio'
           value={FILTER_ALL}
@@ -281,7 +281,7 @@ const Search = ({
           onChange={onFilterChange}/>
         All
       </label>
-      <label>
+      <label className="radio-item">
         <input
           type='radio'
           value={FILTER_ONLINE}
@@ -289,7 +289,7 @@ const Search = ({
           onChange={onFilterChange}/>
           Online
         </label>
-      <label>
+      <label className="radio-item">
         <input
           type='radio'
           value={FILTER_OFFLINE}
