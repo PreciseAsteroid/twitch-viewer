@@ -21,6 +21,10 @@ const PARAM_PAGE = 'page=';
 const CLIENT_IT = "bm7ifyx69m7j6yo8t39b43gb70etra";
 const PARAM_HPP = 'hitsPerPage=';
 
+const FILTER_ALL = 'ALL';
+const FILTER_ONLINE = 'ONLINE';
+const FILTER_OFFLINE = 'OFFLINE';
+
 class App extends Component {
   constructor(props){
     super(props);
@@ -28,6 +32,7 @@ class App extends Component {
       results: null,
       searchTerm: DEFAULT_QUERY,
       isLoading: true,
+      filter: FILTER_ALL,
     };
 
     this.setSearchResults = this.setSearchResults.bind(this);
@@ -35,6 +40,7 @@ class App extends Component {
     this.onSearchSubmit = this.onSearchSubmit.bind(this)
     this.onSearchChange = this.onSearchChange.bind(this)
     this.onClickMore = this.onClickMore.bind(this)
+    this.onFilterChange = this.onFilterChange.bind(this)
   }
 
   // general method to access the api
@@ -185,6 +191,13 @@ class App extends Component {
     .catch((err) => {console.log('err',err)})
   }
 
+  onFilterChange(event){
+    console.log(event.target.value);
+    this.setState({
+      filter: event.target.value,
+    })
+  }
+
 
 
  // standard react components
@@ -202,6 +215,7 @@ class App extends Component {
     const {
       results,
       isLoading,
+      filter,
     } = this.state;
     console.log('app.render.results', results);
 
@@ -212,22 +226,25 @@ class App extends Component {
               <Search className="header-search"
                 onSubmit={this.onSearchSubmit}
                 onChange={this.onSearchChange}
+                filter={filter}
+                onFilterChange={this.onFilterChange}
                 />
         </div>
 
 
         <Table
           results={results}
-          isLoading ={isLoading} />
-          <div>
-            <ButtonWithLoading
-              className='moreButton'
-              isLoading={isLoading}
-              onClick ={this.onClickMore}
-              >
-              More?
-            </ButtonWithLoading>
-          </div>
+          isLoading ={isLoading}
+          filter={filter} />
+        <div>
+          <ButtonWithLoading
+            className='moreButton'
+            isLoading={isLoading}
+            onClick ={this.onClickMore}
+            >
+            More?
+          </ButtonWithLoading>
+        </div>
       </div>
     );
   }
@@ -238,6 +255,8 @@ const Search = ({
   onSubmit,
   onChange,
   className ='',
+  filter ='hey',
+  onFilterChange,
 }) => (
   <form className={className}
     onSubmit={onSubmit}
@@ -253,6 +272,32 @@ const Search = ({
       type="submit">
       search
     </button>
+    <div className='radio'>
+      <label>
+        <input
+          type='radio'
+          value={FILTER_ALL}
+          checked={filter===FILTER_ALL}
+          onChange={onFilterChange}/>
+        All
+      </label>
+      <label>
+        <input
+          type='radio'
+          value={FILTER_ONLINE}
+          checked={filter===FILTER_ONLINE}
+          onChange={onFilterChange}/>
+          Online
+        </label>
+      <label>
+        <input
+          type='radio'
+          value={FILTER_OFFLINE}
+          checked={filter===FILTER_OFFLINE} onChange={onFilterChange}/>
+          Offline
+      </label>
+
+    </div>
   </form>
 );
 
@@ -277,13 +322,14 @@ class Table extends Component{
 
   }
 
-  renderResults(results, isLoading){
-    if (isLoading) {
-      console.log('still loading');
-    } else if (results) {
+  renderResults(results, isLoading,filter){
+    if (results) {
+
       return (
-        results.channels.map(channel=>
-        <div key={channel._id} className='table-row'>
+        <div>
+          <span>{this.renderHeaders()}</span>
+        { results.channels.map(channel=>
+        <div key={channel._id} className={'table-row' + this.filterClassName(channel,filter)}>
           <span style={{ width:'40%'}}>
             <img
               src={channel.logo}
@@ -291,15 +337,18 @@ class Table extends Component{
           </span>
           <span
             className='table-row-txt'
-            style={{ width:'30%'}}>{channel.display_name}</span>
+            style={{ width:'20%'}}>{channel.display_name}</span>
           <span
             className='table-row-txt'
-            style={{ width:'30%'}}>{this.renderStream(channel)}</span>
+            style={{ width:'40%'}}>{this.renderStream(channel)}</span>
         </div>
       )
+      }
+    </div>
     )
-
-    } else{
+  } else if(isLoading) {
+      console.log('still loding');
+    } else {
       // not reulsts
       return(
         <span>No results</span>
@@ -307,22 +356,34 @@ class Table extends Component{
     }
   }
 
+  filterClassName(channel,filter){
+    if ((channel.streams.stream === null && filter === FILTER_ONLINE)||(channel.streams.stream != null && filter === FILTER_OFFLINE)){
+      return ' notVisible';
+    }else {
+      return '';
+    }
+
+  }
+
+  renderHeaders(){
+    return(
+      <div className='table-header'>
+        <span style={{ width:'40%'}}>Channel Picture</span>
+        <span style={{ width:'20%'}}>Display Name</span>
+        <span style={{ width:'40%'}}>ONLINE?</span>
+      </div>
+    )
+  }
+
   render(){
     const {
       results,
       isLoading,
+      filter,
     } = this.props;
     console.log('table.results:', results);
     return(
-      <div>
-        <div className='table-header'>
-          <span style={{ width:'40%'}}>IMG</span>
-          <span style={{ width:'30%'}}>NAME</span>
-          <span style={{ width:'30%'}}>ONLINE</span>
-        </div>
-
-        <span>{this.renderResults(results, isLoading)}</span>
-      </div>
+        <span>{this.renderResults(results, isLoading, filter)}</span>
     )
   }
 }
@@ -349,7 +410,7 @@ class Button extends Component{
 
 // Loading Component
 const Loading = () =>
-  <div>LOADING....</div>
+  <i className="fa fa-spinner fa-pulse fa-5x fa-fw LoadingSpinner"></i>
 
 // withLoading Component
 const withLoading = (Component)=>({isLoading, ...rest})=>
