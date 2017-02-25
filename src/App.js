@@ -222,7 +222,7 @@ class App extends Component {
     return (
       <div className="App">
         <div className="header">
-            <div className="header-title">Twitch Viewer</div>
+            <h1 className="header-title">Twitch Viewer</h1>
               <Search className="header-search"
                 onSubmit={this.onSearchSubmit}
                 onChange={this.onSearchChange}
@@ -241,6 +241,7 @@ class App extends Component {
             className='moreButton'
             isLoading={isLoading}
             onClick ={this.onClickMore}
+            results={results}
             >
             More?
           </ButtonWithLoading>
@@ -261,12 +262,12 @@ const Search = ({
   <form className={className}
     onSubmit={onSubmit}
     >
-    <input
-      className='searchText'
-      type="text"
-      placeholder="search text"
-      onChange={onChange}
-      />
+      <input
+        className='searchText'
+        type="text"
+        placeholder="search text"
+        onChange={onChange}
+        />
     <button
       className='searchButton'
       type="submit">
@@ -279,7 +280,7 @@ const Search = ({
           value={FILTER_ALL}
           checked={filter===FILTER_ALL}
           onChange={onFilterChange}/>
-        All
+          <strong>All</strong>
       </label>
       <label className="radio-item">
         <input
@@ -287,14 +288,14 @@ const Search = ({
           value={FILTER_ONLINE}
           checked={filter===FILTER_ONLINE}
           onChange={onFilterChange}/>
-          Online
+        <strong>Online</strong>
         </label>
       <label className="radio-item">
         <input
           type='radio'
           value={FILTER_OFFLINE}
           checked={filter===FILTER_OFFLINE} onChange={onFilterChange}/>
-          Offline
+          <strong>Offline</strong>
       </label>
 
     </div>
@@ -323,38 +324,41 @@ class Table extends Component{
   }
 
   renderResults(results, isLoading,filter){
-    if (results) {
+    if (!isLoading) {
+      if (results.channels.length!==0) {
+        return (
+          <div>
+            <span>{this.renderHeaders()}</span>
+          { results.channels.map(channel=>
+          <div key={channel._id} className={'table-row' + this.filterClassName(channel,filter)}>
+            <span style={{ width:'40%'}}>
+              <img
+                src={channel.logo}
+                className='table-row-img'/>
+            </span>
+            <span
+              className='table-row-txt'
+              style={{ width:'20%'}}>{channel.display_name}</span>
+            <span
+              className='table-row-txt'
+              style={{ width:'40%'}}>{this.renderStream(channel)}</span>
+          </div>
+        )
+        }
+      </div>
+      )
+      } else {
+        return(
+          <div>
+            <i className="fa fa-frown-o fa-3x"> No results</i>
 
-      return (
-        <div>
-          <span>{this.renderHeaders()}</span>
-        { results.channels.map(channel=>
-        <div key={channel._id} className={'table-row' + this.filterClassName(channel,filter)}>
-          <span style={{ width:'40%'}}>
-            <img
-              src={channel.logo}
-              className='table-row-img'/>
-          </span>
-          <span
-            className='table-row-txt'
-            style={{ width:'20%'}}>{channel.display_name}</span>
-          <span
-            className='table-row-txt'
-            style={{ width:'40%'}}>{this.renderStream(channel)}</span>
         </div>
-      )
+        )
       }
-    </div>
-    )
-  } else if(isLoading) {
+
+  } else {
       console.log('still loding');
-    } else {
-      // not reulsts
-      return(
-        <span>No results</span>
-      )
-    }
-  }
+  }}
 
   filterClassName(channel,filter){
     if ((channel.streams.stream === null && filter === FILTER_ONLINE)||(channel.streams.stream != null && filter === FILTER_OFFLINE)){
@@ -368,9 +372,9 @@ class Table extends Component{
   renderHeaders(){
     return(
       <div className='table-header'>
-        <span style={{ width:'40%'}}>Channel Picture</span>
-        <span style={{ width:'20%'}}>Display Name</span>
-        <span style={{ width:'40%'}}>ONLINE?</span>
+        <strong style={{ width:'40%'}}>Channel Picture</strong>
+        <strong style={{ width:'20%'}}>Display Name</strong>
+        <strong style={{ width:'40%'}}>ONLINE?</strong>
       </div>
     )
   }
@@ -389,18 +393,26 @@ class Table extends Component{
 }
 
 class Button extends Component{
+  calcClass(className,results){
+    if (results.channels.length === 0) {
+      return 'notVisible';
+    } else {
+      return className;
+    }
+  }
   render(){
     const {
       onClick,
       children,
       className='',
+      results,
     } = this.props;
 
     return (
       <button
         onClick={onClick}
         type='button'
-        className={className}
+        className={this.calcClass(className,results)}
         >
         {children}
       </button>
