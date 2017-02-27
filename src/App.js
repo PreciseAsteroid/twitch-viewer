@@ -1,11 +1,7 @@
 import React, { Component } from 'react';
 import './App.css';
 
-// TODO: check why so many rendering takes place
 
-// TODO: handle not results gracefully (msg) + next should be disabled
-
-// TODO: handle search with no arguments
 // https://api.twitch.tv/kraken/search/channels?query=*
 // https://api.twitch.tv/kraken/streams/:16764225
 // fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}&${PARAM_HPP}${DEFAULT_HPP}`)
@@ -45,7 +41,9 @@ class App extends Component {
 
   // general method to access the api
   fetchResources(object,isSearch,QueryParam,completeURL){
-    this.setState({isLoading: true});
+    if (object === OBJECT_CHANNELS || completeURL !== undefined) {
+        this.setState({isLoading: true}); // we want to avoid too many renders
+    }
     return new Promise ((fulfill, reject)=>{
       let URL = null;
       if(completeURL){
@@ -324,13 +322,13 @@ class Table extends Component{
   }
 
   renderResults(results, isLoading,filter){
-    if (!isLoading) {
+    if (!isLoading || results !== null) {
       if (results.channels.length!==0) {
         return (
           <div>
             <span>{this.renderHeaders()}</span>
           { results.channels.map(channel=>
-          <div key={channel._id} className={'table-row' + this.filterClassName(channel,filter)}>
+          <div key={channel._id} className={'table-row' + this.calcFilterClassName(channel,filter)}>
             <span style={{ width:'40%'}}>
               <img
                 src={channel.logo}
@@ -360,7 +358,7 @@ class Table extends Component{
       console.log('still loding');
   }}
 
-  filterClassName(channel,filter){
+  calcFilterClassName(channel,filter){
     if ((channel.streams.stream === null && filter === FILTER_ONLINE)||(channel.streams.stream != null && filter === FILTER_OFFLINE)){
       return ' notVisible';
     }else {
